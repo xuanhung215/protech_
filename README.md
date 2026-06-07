@@ -299,9 +299,7 @@ Backend Node.js có thể tự tạo tài khoản admin khi khởi động:
 | Thông tin | Giá trị |
 |-----------|---------|
 | Owner | HUYNH-HOANG-QUAN |
-| Repository | web-development |
-| URL | https://github.com/HUYNH-HOANG-QUAN/web-development |
+| Repository | lap_trinh_web_final |
+| URL | https://github.com/HUYNH-HOANG-QUAN/lap_trinh_web_final |
 
 ---
-
-Chúc team code vui vẻ và không bao giờ gặp conflict!
