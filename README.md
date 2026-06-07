@@ -193,8 +193,7 @@ feature/xxx   ← Nhánh tính năng của từng người
 
 | Thành viên | Tính năng |
 |------------|------------|
-| HUYNH-HOANG-QUAN | Chatbot |
-| (待分配) | 待分配 |
+
 
 ### 8.3. Quy Tắc Đặt Tên Nhánh
 
