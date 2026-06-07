@@ -36,11 +36,11 @@ export const apiLogin = async (username, password, rememberMe = false) => {
   return response.json();
 };
 
-export const apiRegister = async (fullName, email, phone, password) => {
+export const apiRegister = async (fullName, email, phone, password, confirmPassword) => {
   const response = await fetch(`${API_BASE}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fullName, email, phone, password_hash: password }),
+    body: JSON.stringify({ fullName, email, phone, password, confirmPassword }),
   });
 
   if (!response.ok) {

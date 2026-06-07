@@ -63,7 +63,7 @@ export async function login(req: Request, res: Response): Promise<void> {
 }
 
 export async function register(req: Request, res: Response): Promise<void> {
-  const { fullName, email, phone, password } = req.body;
+  const { fullName, email, phone, password, confirmPassword } = req.body;
 
   if (!fullName?.trim()) {
     res.status(400).json({ message: "Ho ten khong duoc trong." });
@@ -73,8 +73,21 @@ export async function register(req: Request, res: Response): Promise<void> {
     res.status(400).json({ message: "Email khong duoc trong." });
     return;
   }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    res.status(400).json({ message: "Email khong dung dinh dang." });
+    return;
+  }
   if (!password?.trim()) {
     res.status(400).json({ message: "Mat khau khong duoc trong." });
+    return;
+  }
+  if (password.length < 6) {
+    res.status(400).json({ message: "Mat khau phai it nhat 6 ky tu." });
+    return;
+  }
+  if (password !== confirmPassword) {
+    res.status(400).json({ message: "Mat khau khong khop." });
     return;
   }
 

@@ -29,7 +29,7 @@ const RegisterPage = ({ onLogin, navigate }) => {
 
     setLoading(true);
     try {
-      await apiRegister(fullName, email, phone, password);
+      await apiRegister(fullName, email, phone, password, confirm);
       navigate("login");
     } catch (err) {
       setError(err.message);
