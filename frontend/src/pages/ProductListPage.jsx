@@ -9,6 +9,16 @@ import { getProductUiData } from "../services/productService";
 
 const ALL_CATEGORY = { id: 0, name: "Tất cả", count: 0, icon: "" };
 
+const PRICE_RANGES = [
+  { id: "all", label: "Tất cả", min: 0, max: Infinity },
+  { id: "100k-300k", label: "100k – 300k", min: 100000, max: 300000 },
+  { id: "300k-500k", label: "300k – 500k", min: 300000, max: 500000 },
+  { id: "500k-1m", label: "500k – 1 triệu", min: 500000, max: 1000000 },
+  { id: "1m-1.5m", label: "1 – 1.5 triệu", min: 1000000, max: 1500000 },
+  { id: "1.5m-2m", label: "1.5 – 2 triệu", min: 1500000, max: 2000000 },
+  { id: "2m+", label: "Trên 2 triệu", min: 2000000, max: Infinity },
+];
+
 const ProductListPage = ({ onAddToCart, onViewDetail, initialCategoryId }) => {
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([ALL_CATEGORY]);
@@ -41,13 +51,15 @@ const ProductListPage = ({ onAddToCart, onViewDetail, initialCategoryId }) => {
 
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState("default");
+  const [activePriceRange, setActivePriceRange] = useState(PRICE_RANGES[0]);
 
   let filtered = products.filter((p) => {
     const matchCat = activeCategory.id === 0 || p.categoryId === activeCategory.id;
     const matchSearch =
       p.name.toLowerCase().includes(searchText.toLowerCase()) ||
       p.brand.toLowerCase().includes(searchText.toLowerCase());
-    return matchCat && matchSearch;
+    const matchPrice = p.price >= activePriceRange.min && p.price <= activePriceRange.max;
+    return matchCat && matchSearch && matchPrice;
   });
 
   if (sortBy === "price-asc") filtered = [...filtered].sort((a, b) => a.price - b.price);
@@ -113,6 +125,41 @@ const ProductListPage = ({ onAddToCart, onViewDetail, initialCategoryId }) => {
             <strong style={{ color: "var(--primary)" }}>{filtered.length}</strong>{" "}
             sản phẩm
           </div>
+        </div>
+
+        {/* Khoảng giá */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+          {PRICE_RANGES.map((range) => (
+            <button
+              key={range.id}
+              onClick={() => setActivePriceRange(range)}
+              style={{
+                padding: "10px 18px",
+                borderRadius: "var(--radius-xl)",
+                border: activePriceRange.id === range.id
+                  ? "1px solid rgba(14, 165, 233, 0.45)"
+                  : "1px solid rgba(14, 165, 233, 0.08)",
+                background: activePriceRange.id === range.id
+                  ? "rgba(14, 165, 233, 0.08)"
+                  : "rgba(22, 36, 54, 0.6)",
+                backdropFilter: "blur(16px)",
+                color: "var(--white)",
+                fontFamily: "'Exo 2', sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                cursor: "pointer",
+                transition: "all 0.45s cubic-bezier(0.4, 0, 0.2, 1)",
+                transform: activePriceRange.id === range.id ? "translateY(-4px)" : "none",
+                boxShadow: activePriceRange.id === range.id
+                  ? "0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(14, 165, 233, 0.08)"
+                  : "none",
+              }}
+            >
+              {range.label}
+            </button>
+          ))}
         </div>
       </section>
 
