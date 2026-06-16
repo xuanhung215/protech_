@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { adminService } from "../../services/adminService";
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price || 0);
@@ -7,28 +6,28 @@ const formatPrice = (price) => {
 
 const STATUS_LIST = [
   { key: "all",            label: "Tất cả"         },
-  { key: "PENDING",        label: "Chờ xác nhận"   },
-  { key: "CONFIRMED",      label: "Đã xác nhận"    },
-  { key: "DELIVERED",      label: "Đã giao hàng"   },
-  { key: "COMPLETED",      label: "Hoàn thành"     },
-  { key: "CANCELLED",      label: "Đã hủy"         },
-  { key: "PENDING_CONFIRM", label: "Chờ thanh toán" },
+  { key: "pending",        label: "Chờ xác nhận"   },
+  { key: "confirmed",      label: "Đã xác nhận"    },
+  { key: "delivered",      label: "Đã giao hàng"   },
+  { key: "completed",      label: "Hoàn thành"     },
+  { key: "cancelled",      label: "Đã hủy"         },
+  { key: "pending_confirm", label: "Chờ thanh toán" },
 ];
 
 const STATUS_NEXT = {
-  PENDING: "CONFIRMED",
-  PENDING_CONFIRM: "CONFIRMED", // Admin confirm banking payment
-  CONFIRMED: "DELIVERED",       // Shipper marks as delivered
-  DELIVERED: "COMPLETED",       // Admin confirms customer received (reduces stock)
+  pending: "confirmed",
+  pending_confirm: "confirmed", // Admin confirm banking payment
+  confirmed: "delivered",       // Shipper marks as delivered
+  delivered: "completed",       // Admin confirms customer received (reduces stock)
 };
 
 const STATUS_COLOR = {
-  PENDING:        "#f59e0b",
-  CONFIRMED:      "#8b5cf6",    // Purple for confirmed
-  DELIVERED:      "#3b82f6",    // Blue for delivered
-  COMPLETED:      "var(--green)",
-  CANCELLED:      "var(--red)",
-  PENDING_CONFIRM: "#3b82f6", // Blue for banking payment pending
+  pending:        "#f59e0b",
+  confirmed:      "#8b5cf6",    // Purple for confirmed
+  delivered:      "#3b82f6",    // Blue for delivered
+  completed:      "var(--green)",
+  cancelled:      "var(--red)",
+  pending_confirm: "#3b82f6", // Blue for banking payment pending
 };
 
 const OrderManagePage = ({ onUpdateStatus, showToast }) => {
@@ -38,12 +37,25 @@ const OrderManagePage = ({ onUpdateStatus, showToast }) => {
   const [search, setSearch] = useState("");
   const [expandedId, setExpandedId] = useState(null);
 
-  const fetchOrders = async () => {
+  const fetchOrders = () => {
     try {
       setLoading(true);
-      const data = await adminService.getAllOrders();
-      setOrders(data);
+      // Đọc tất cả đơn hàng từ localStorage (từ tất cả user)
+      const allOrders = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("localOrders_")) {
+          const userOrders = JSON.parse(localStorage.getItem(key) || "[]");
+          allOrders.push(...userOrders);
+        }
+      }
+      // Đọc thêm đơn hàng của guest (nếu có)
+      const guestOrders = JSON.parse(localStorage.getItem("localOrders") || "[]");
+      allOrders.push(...guestOrders);
+      
+      setOrders(allOrders);
     } catch (error) {
+      console.error("Lỗi tải đơn hàng:", error);
       showToast(`❌ Lỗi tải đơn hàng: ${error.message}`);
     } finally {
       setLoading(false);
@@ -54,54 +66,84 @@ const OrderManagePage = ({ onUpdateStatus, showToast }) => {
     fetchOrders();
   }, []);
 
-  // Sắp xếp ưu tiên: PENDING_CONFIRM lên đầu, sau đó theo thời gian
+  // Sắp xếp ưu tiên: pending_confirm lên đầu, sau đó theo thời gian
   const sortedOrders = [...orders].sort((a, b) => {
-    // Ưu tiên PENDING_CONFIRM lên đầu
-    if (a.paymentStatus === "PENDING_CONFIRM" && b.paymentStatus !== "PENDING_CONFIRM") return -1;
-    if (a.paymentStatus !== "PENDING_CONFIRM" && b.paymentStatus === "PENDING_CONFIRM") return 1;
+    // Ưu tiên pending_confirm lên đầu
+    if (a.paymentStatus === "pending_confirm" && b.paymentStatus !== "pending_confirm") return -1;
+    if (a.paymentStatus !== "pending_confirm" && b.paymentStatus === "pending_confirm") return 1;
     // Sau đó theo thời gian (mới nhất lên đầu)
-    return new Date(b.createdAt) - new Date(a.createdAt);
+    return new Date(b.placedAt || b.createdAt) - new Date(a.placedAt || a.createdAt);
   });
 
   const filtered = sortedOrders.filter((o) => {
-    const matchStatus = filter === "all" || o.status === filter;
-    // Nếu filter là PENDING_CONFIRM thì lọc theo paymentStatus
-    const matchPaymentStatus = filter === "PENDING_CONFIRM" 
-      ? o.paymentStatus === "PENDING_CONFIRM" 
-      : true;
+    let matchStatus = false;
+    if (filter === "all") {
+      matchStatus = true;
+    } else if (filter === "pending_confirm") {
+      matchStatus = o.paymentStatus === "pending_confirm";
+    } else if (filter === "pending") {
+      matchStatus = o.status === "pending" && o.paymentStatus !== "pending_confirm";
+    } else {
+      matchStatus = o.status === filter;
+    }
+
     const matchSearch = String(o.orderCode).toLowerCase().includes(search.toLowerCase()) || 
-                        (o.recipientName || "").toLowerCase().includes(search.toLowerCase()) ||
+                        (o.info?.fullName || "").toLowerCase().includes(search.toLowerCase()) ||
                         String(o.id).includes(search);
-    return matchStatus && matchSearch && matchPaymentStatus;
+    return matchStatus && matchSearch;
   });
 
   const countByStatus = (key) => {
     if (key === "all") return orders.length;
-    if (key === "PENDING_CONFIRM") return orders.filter(o => o.paymentStatus === "PENDING_CONFIRM").length;
+    if (key === "pending_confirm") return orders.filter(o => o.paymentStatus === "pending_confirm").length;
+    if (key === "pending") return orders.filter(o => o.status === "pending" && o.paymentStatus !== "pending_confirm").length;
     return orders.filter(o => o.status === key).length;
   };
 
-  const handleUpdateStatus = async (orderId, statusData) => {
+  const handleUpdateStatus = (orderId, statusData) => {
     try {
       // Support both string (backward compatible) and object format
-      const data = typeof statusData === 'string' ? { status: statusData } : statusData;
-      await adminService.updateOrderStatus(orderId, data);
+      const data = typeof statusData === 'string' ? { status: statusData.toLowerCase() } : {
+        ...statusData,
+        status: statusData.status ? statusData.status.toLowerCase() : undefined,
+        paymentStatus: statusData.paymentStatus ? statusData.paymentStatus.toLowerCase() : undefined
+      };
+      
+      // Cập nhật đơn hàng trong tất cả các key localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("localOrders_") || key === "localOrders") {
+          const userOrders = JSON.parse(localStorage.getItem(key) || "[]");
+          let updated = false;
+          const newOrders = userOrders.map(o => {
+            if (o.id === orderId || o.orderCode === orderId) {
+              updated = true;
+              return { ...o, ...data };
+            }
+            return o;
+          });
+          if (updated) {
+            localStorage.setItem(key, JSON.stringify(newOrders));
+          }
+        }
+      }
+      
       showToast(`✅ Đã cập nhật trạng thái đơn #${orderId}`);
       if (onUpdateStatus) onUpdateStatus(orderId, data.status || data.paymentStatus);
-      fetchOrders();
+      fetchOrders(); // Tải lại danh sách
     } catch (error) {
+      console.error("Lỗi cập nhật trạng thái:", error);
       showToast(`❌ Lỗi cập nhật trạng thái: ${error.message}`);
     }
   };
 
-  const handleCancel = async (orderId) => {
+  const handleCancel = (orderId) => {
     if (!window.confirm("Bạn có chắc muốn hủy đơn hàng này?")) return;
     try {
-      await adminService.updateOrderStatus(orderId, { status: "CANCELLED" });
+      handleUpdateStatus(orderId, { status: "cancelled" });
       showToast(`🗑 Đã hủy đơn #${orderId}`);
-      if (onUpdateStatus) onUpdateStatus(orderId, "CANCELLED");
-      fetchOrders();
     } catch (error) {
+      console.error("Lỗi hủy đơn:", error);
       showToast(`❌ Lỗi hủy đơn: ${error.message}`);
     }
   };
@@ -143,17 +185,17 @@ const OrderManagePage = ({ onUpdateStatus, showToast }) => {
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {filtered.map((order) => {
-            const isExpanded  = expandedId === order.id;
-            const nextStatus  = STATUS_NEXT[order.status] || (order.paymentStatus === "PENDING_CONFIRM" ? "CONFIRMED" : null);
+            const isExpanded  = expandedId === order.id || expandedId === order.orderCode;
+            const nextStatus  = STATUS_NEXT[order.status] || (order.paymentStatus === "pending_confirm" ? "confirmed" : null);
             const statusColor = STATUS_COLOR[order.status] ?? STATUS_COLOR[order.paymentStatus] ?? "var(--gray)";
             const statusLabel = STATUS_LIST.find(s => s.key === order.status)?.label ?? 
-                               (order.paymentStatus === "PENDING_CONFIRM" ? "Chờ thanh toán" : order.status);
-            const isPendingConfirm = order.paymentStatus === "PENDING_CONFIRM";
+                               (order.paymentStatus === "pending_confirm" ? "Chờ thanh toán" : order.status);
+            const isPendingConfirm = order.paymentStatus === "pending_confirm";
 
             return (
-              <div key={order.id} style={{ background: "var(--card-bg)", borderRadius: 14, border: "1px solid #2a2a2a", overflow: "hidden" }}>
+              <div key={order.id || order.orderCode} style={{ background: "var(--card-bg)", borderRadius: 14, border: "1px solid #2a2a2a", overflow: "hidden" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr auto", gap: 16, padding: "16px 20px", alignItems: "center", cursor: "pointer" }}
-                  onClick={() => setExpandedId(isExpanded ? null : order.id)}>
+                  onClick={() => setExpandedId(isExpanded ? null : (order.id || order.orderCode))}>
 
                   <div>
                     <div style={{ fontSize: 13, color: "var(--gray)" }}>Mã đơn</div>
@@ -161,12 +203,12 @@ const OrderManagePage = ({ onUpdateStatus, showToast }) => {
                   </div>
                   <div>
                     <div style={{ fontSize: 13, color: "var(--gray)" }}>Khách hàng</div>
-                    <div style={{ fontWeight: 700, color: "var(--white)" }}>{order.recipientName || "—"}</div>
-                    <div style={{ fontSize: 12, color: "var(--gray)" }}>{order.recipientPhone}</div>
+                    <div style={{ fontWeight: 700, color: "var(--white)" }}>{order.info?.fullName || "—"}</div>
+                    <div style={{ fontSize: 12, color: "var(--gray)" }}>{order.info?.phone}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 13, color: "var(--gray)" }}>Tổng tiền</div>
-                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: "var(--primary)" }}>{formatPrice(order.totalAmount)}</div>
+                    <div style={{ fontFamily: "'Bebas Neue', sans-serif", fontSize: 22, color: "var(--primary)" }}>{formatPrice(order.total)}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 13, color: "var(--gray)", marginBottom: 4 }}>Trạng thái</div>
@@ -185,45 +227,44 @@ const OrderManagePage = ({ onUpdateStatus, showToast }) => {
                 {isExpanded && (
                   <div style={{ borderTop: "1px solid #2a2a2a", padding: "20px 20px" }}>
                     <div style={{ marginBottom: 20 }}>
-                      {order.items?.map((item) => (
-                        <div key={item.id} style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
-                          <span style={{ flex: 1, fontSize: 13, color: "var(--white)" }}>{item.productName} (SKU: {item.productSku})</span>
+                      {order.items?.map((item, idx) => (
+                        <div key={item.id || item.productId || idx} style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10 }}>
+                          <span style={{ flex: 1, fontSize: 13, color: "var(--white)" }}>
+                            {item.productName} 
+                            {item.product?.emoji && <span style={{ marginLeft: 6 }}>{item.product.emoji}</span>}
+                          </span>
                           <span style={{ fontSize: 13, color: "var(--gray)" }}>x{item.quantity}</span>
                           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--primary)" }}>{formatPrice(item.lineTotal)}</span>
                         </div>
                       ))}
                     </div>
 
-                    <div style={{ fontSize: 13, color: "var(--gray)", marginBottom: 20 }}>
-                      📍 {order.shippingAddressLine1}, {order.shippingCity}, {order.shippingProvince}
-                    </div>
+                    {order.info?.address && (
+                      <div style={{ fontSize: 13, color: "var(--gray)", marginBottom: 20 }}>
+                        📍 {order.info.address}, {order.info.district || ""}, {order.info.city}, {order.info.province || ""}
+                      </div>
+                    )}
 
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                       {/* Nút xác nhận thanh toán cho banking */}
-                      {order.paymentStatus === "PENDING_CONFIRM" && (
+                      {order.paymentStatus === "pending_confirm" && (
                         <button className="btn-primary" style={{ padding: "10px 20px", fontSize: 13, background: "var(--green)" }}
-                          onClick={() => handleUpdateStatus(order.id, { status: "CONFIRMED", paymentStatus: "PAID" })}>
+                          onClick={() => handleUpdateStatus(order.id || order.orderCode, { status: "confirmed", paymentStatus: "paid" })}>
                           ✓ Xác nhận thanh toán
                         </button>
                       )}
-                      {nextStatus && order.paymentStatus !== "PENDING_CONFIRM" && (
+                      {nextStatus && order.paymentStatus !== "pending_confirm" && (
                         <button className="btn-primary" style={{ padding: "10px 20px", fontSize: 13 }}
-                          onClick={() => handleUpdateStatus(order.id, { status: nextStatus })}>
-                          {order.status === "CONFIRMED" ? "🚚 Đã giao hàng" : 
-                           order.status === "DELIVERED" ? "✓ Xác nhận hoàn thành" : 
+                          onClick={() => handleUpdateStatus(order.id || order.orderCode, { status: nextStatus })}>
+                          {order.status === "confirmed" ? "🚚 Đã giao hàng" : 
+                           order.status === "delivered" ? "✓ Xác nhận hoàn thành" : 
                            "✓ Xác nhận đơn hàng"}
                         </button>
                       )}
-                      {order.status === "PENDING" && order.paymentStatus !== "PENDING_CONFIRM" && (
-                        <button className="btn-danger" onClick={() => handleCancel(order.id)}>Hủy đơn</button>
+                      {order.status === "pending" && order.paymentStatus !== "pending_confirm" && (
+                        <button className="btn-danger" onClick={() => handleCancel(order.id || order.orderCode)}>Hủy đơn</button>
                       )}
                     </div>
-                    {/* Thông báo trạng thái kho */}
-                    {order.status === "DELIVERED" && (
-                      <div style={{ marginTop: 12, fontSize: 12, color: "var(--amber)", background: "rgba(251,191,36,0.1)", padding: "10px 14px", borderRadius: 8 }}>
-                        ⚠️ Khi xác nhận hoàn thành, số lượng sản phẩm trong kho sẽ được trừ đi.
-                      </div>
-                    )}
                   </div>
                 )}
               </div>

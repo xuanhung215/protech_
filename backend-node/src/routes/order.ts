@@ -42,6 +42,7 @@ export async function createOrder(req: AuthRequest, res: Response): Promise<void
   const { recipientName, recipientPhone, shippingAddressLine1, shippingCity, shippingProvince, note, items } = req.body;
 
   const order = new Order();
+  order.items = [];
   order.userId = user.id;
   order.orderCode = generateOrderCode();
   order.recipientName = recipientName;
@@ -88,6 +89,7 @@ export async function createGuestOrder(req: AuthRequest, res: Response): Promise
   const { recipientName, recipientPhone, shippingAddressLine1, shippingCity, shippingProvince, note, items } = req.body;
 
   const order = new Order();
+  order.items = [];
   order.orderCode = generateOrderCode();
   order.recipientName = recipientName;
   order.recipientPhone = recipientPhone;
@@ -185,7 +187,10 @@ export async function confirmBankingPayment(req: AuthRequest, res: Response): Pr
   const orderRepo = AppDataSource.getRepository(Order);
   const orderId = parseId(req.params.orderId);
   if (!orderId) { res.status(400).json({ error: "Invalid order ID" }); return; }
-  const order = await orderRepo.findOne({ where: { id: orderId } });
+  const order = await orderRepo.findOne({
+    where: { id: orderId },
+    relations: ["items"],
+  });
 
   if (!order) {
     res.status(404).json({ error: "Order not found" });

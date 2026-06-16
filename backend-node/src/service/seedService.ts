@@ -11,16 +11,18 @@ export async function seedDefaultUsers(): Promise<void> {
     let admin = await userRepo.findOne({ where: { email: adminEmail } });
     if (!admin) {
       admin = new User();
+      admin.fullName = config.bootstrap.admin.fullName;
+      admin.email = adminEmail;
+      admin.phone = config.bootstrap.admin.phone;
+      admin.role = Role.ADMIN;
+      admin.status = UserStatus.ACTIVE;
+      admin.deletedAt = undefined;
+      admin.passwordHash = await bcryptjs.hash(config.bootstrap.admin.password, 10);
+      await userRepo.save(admin);
+      console.log(`[Seed] Admin created: ${adminEmail} / ${config.bootstrap.admin.password}`);
+    } else {
+      console.log(`[Seed] Admin already exists: ${adminEmail}`);
     }
-    admin.fullName = config.bootstrap.admin.fullName;
-    admin.email = adminEmail;
-    admin.phone = config.bootstrap.admin.phone;
-    admin.role = Role.ADMIN;
-    admin.status = UserStatus.ACTIVE;
-    admin.deletedAt = undefined;
-    admin.passwordHash = await bcryptjs.hash(config.bootstrap.admin.password, 10);
-    await userRepo.save(admin);
-    console.log(`[Seed] Admin ready: ${adminEmail} / ${config.bootstrap.admin.password}`);
   }
 
   if (config.bootstrap.customer.enabled) {
@@ -28,15 +30,17 @@ export async function seedDefaultUsers(): Promise<void> {
     let customer = await userRepo.findOne({ where: { email: custEmail } });
     if (!customer) {
       customer = new User();
+      customer.fullName = config.bootstrap.customer.fullName;
+      customer.email = custEmail;
+      customer.phone = config.bootstrap.customer.phone;
+      customer.role = Role.CUSTOMER;
+      customer.status = UserStatus.ACTIVE;
+      customer.deletedAt = undefined;
+      customer.passwordHash = await bcryptjs.hash(config.bootstrap.customer.password, 10);
+      await userRepo.save(customer);
+      console.log(`[Seed] Customer created: ${custEmail} / ${config.bootstrap.customer.password}`);
+    } else {
+      console.log(`[Seed] Customer already exists: ${custEmail}`);
     }
-    customer.fullName = config.bootstrap.customer.fullName;
-    customer.email = custEmail;
-    customer.phone = config.bootstrap.customer.phone;
-    customer.role = Role.CUSTOMER;
-    customer.status = UserStatus.ACTIVE;
-    customer.deletedAt = undefined;
-    customer.passwordHash = await bcryptjs.hash(config.bootstrap.customer.password, 10);
-    await userRepo.save(customer);
-    console.log(`[Seed] Customer ready: ${custEmail} / ${config.bootstrap.customer.password}`);
   }
 }

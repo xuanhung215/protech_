@@ -290,9 +290,24 @@ export async function getAllOrdersAdmin(req: AuthRequest, res: Response): Promis
     userId: o.userId,
     username: o.user?.fullName || "Guest",
     total: o.totalAmount,
+    totalAmount: o.totalAmount,
     status: o.status,
     paymentStatus: o.paymentStatus,
     createdAt: o.createdAt,
+    recipientName: o.recipientName,
+    recipientPhone: o.recipientPhone,
+    shippingAddressLine1: o.shippingAddressLine1,
+    shippingCity: o.shippingCity,
+    shippingProvince: o.shippingProvince,
+    items: (o.items || []).map((i: OrderItem) => ({
+      id: i.id,
+      productId: i.productId,
+      productName: i.productName,
+      productSku: i.productSku,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      lineTotal: i.lineTotal,
+    })),
   })));
 }
 

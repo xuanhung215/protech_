@@ -7,8 +7,8 @@ import { ShoppingCart } from "lucide-react";
 
 const CartPage = ({ cart, onUpdateQty, onRemove, navigate }) => {
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0);
-  const shipping = subtotal >= 500000 ? 0 : 30000;
-  const total = subtotal + shipping;
+  const shipping = 0; // Miễn phí vận chuyển cho tất cả đơn hàng
+  const total = subtotal;
 
   if (cart.length === 0) {
     return (
@@ -110,7 +110,7 @@ const CartPage = ({ cart, onUpdateQty, onRemove, navigate }) => {
               { label: "Tạm tính", value: formatPrice(subtotal) },
               {
                 label: "Phí vận chuyển",
-                value: shipping === 0 ? "Miễn phí" : formatPrice(shipping),
+                value: "Miễn phí",
                 highlight: shipping === 0,
               },
             ].map(({ label, value, highlight }) => (
@@ -130,7 +130,7 @@ const CartPage = ({ cart, onUpdateQty, onRemove, navigate }) => {
             </div>
 
             {/* Free ship hint */}
-            {shipping > 0 && (
+            {/* {shipping > 0 && (
               <div style={{
                 background: "rgba(34,197,94,0.06)",
                 border: "1px dashed rgba(34,197,94,0.2)",
@@ -148,7 +148,7 @@ const CartPage = ({ cart, onUpdateQty, onRemove, navigate }) => {
                 </strong>{" "}
                 để miễn phí vận chuyển
               </div>
-            )}
+            )} */}
 
             <button
               className="btn-primary"

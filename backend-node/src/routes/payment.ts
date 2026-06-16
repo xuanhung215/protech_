@@ -92,7 +92,7 @@ export async function vnpayReturn(req: Request, res: Response): Promise<void> {
 
   if (isValid) {
     if (responseCode === "00") {
-      const order = await orderRepo.findOne({ where: { orderCode } });
+      const order = await orderRepo.findOne({ where: { orderCode }, relations: ["items"] });
       if (order) {
         order.paymentStatus = "PAID";
         order.status = "CONFIRMED";
@@ -102,7 +102,7 @@ export async function vnpayReturn(req: Request, res: Response): Promise<void> {
       status = "success";
       message = "Thanh toan thanh cong!";
     } else {
-      const order = await orderRepo.findOne({ where: { orderCode } });
+      const order = await orderRepo.findOne({ where: { orderCode }, relations: ["items"] });
       if (order) {
         order.paymentStatus = "FAILED";
         await orderRepo.save(order);

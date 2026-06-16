@@ -45,8 +45,8 @@ const CheckoutPage = ({ cart = [], user, onPlaceOrder, navigate, showToast }) =>
   }, [userInfo]);
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.product.price * item.qty, 0), [cart]);
-  const shipping = subtotal >= 500000 ? 0 : 30000;
-  const total = subtotal + shipping;
+  const shipping = 0; // Miễn phí vận chuyển cho tất cả đơn hàng
+  const total = subtotal;
 
   const handlePlaceOrder = async () => {
     if (!hasRequiredInfo) {
@@ -111,6 +111,7 @@ const CheckoutPage = ({ cart = [], user, onPlaceOrder, navigate, showToast }) =>
         discount: 0,
         info: userInfo,
         payMethod: "cod",
+        status: "pending", // Trạng thái mặc định
         placedAt: new Date().toISOString(),
         guestOrder: !isLoggedIn(),
       };

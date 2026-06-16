@@ -31,7 +31,7 @@ import ContactInboxPage  from "./pages/admin/ContactInboxPage";
 
 import "./styles/global.css";
 import { transformOrderFromBE } from "./utils/orderHelpers";
-import { apiGetMyOrders, isLoggedIn } from "./utils/api";
+import { isLoggedIn } from "./utils/api";
 
 const App = () => {
   // ── Routing ───
@@ -109,22 +109,19 @@ const App = () => {
     }
   }, [user]);
 
-  // ── Đơn hàng – fetch từ API (không dùng localStorage) ────────────────
-  const [orders, setOrders] = useState([]);
-
-  // Hàm fetch orders từ API (chỉ khi đã đăng nhập)
-  const fetchMyOrders = async () => {
-    if (!user) { setOrders([]); return; }
+  // ── Đơn hàng – dùng localStorage ────────────────
+  const [orders, setOrders] = useState(() => {
     try {
-      const data = await apiGetMyOrders();
-      setOrders(Array.isArray(data) ? data.map(transformOrderFromBE) : []);
-    } catch (err) {
-      console.error("Không thể tải đơn hàng:", err);
-      setOrders([]);
+      const user = localStorage.getItem("user");
+      const key = user ? `localOrders_${JSON.parse(user).email}` : "localOrders";
+      const saved = localStorage.getItem(key);
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
     }
-  };
+  });
 
-  // Khi đăng nhập/logout: load đúng cart của user + fetch orders từ API
+  // Khi đăng nhập/logout: load đúng cart và orders của user
   useEffect(() => {
     // Load giỏ hàng đúng theo user
     try {
@@ -134,8 +131,14 @@ const App = () => {
     } catch {
       setCart([]);
     }
-    // Fetch orders từ API
-    fetchMyOrders();
+    // Load đơn hàng đúng theo user
+    try {
+      const ordersKey = user ? `localOrders_${user.email}` : "localOrders";
+      const savedOrders = localStorage.getItem(ordersKey);
+      setOrders(savedOrders ? JSON.parse(savedOrders) : []);
+    } catch {
+      setOrders([]);
+    }
   }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Toast ─────────────────────────────────────────
@@ -192,21 +195,65 @@ const App = () => {
     showToast("🗑 Đã xóa sản phẩm khỏi giỏ hàng");
   };
 
-  // Đặt hàng thành công: xóa giỏ, reload orders từ API
+  // Đặt hàng thành công: xóa giỏ, lưu đơn vào orders và localStorage
   const handlePlaceOrder = (order) => {
+    // Cập nhật state orders
+    setOrders((prev) => {
+      const newOrders = [...prev, order];
+      // Lưu ngay vào localStorage
+      try {
+        const key = user ? `localOrders_${user.email}` : "localOrders";
+        localStorage.setItem(key, JSON.stringify(newOrders));
+      } catch {}
+      return newOrders;
+    });
+    
+    // Xóa giỏ hàng và lưu vào localStorage
     setCart([]);
-    // Reload orders từ API để đảm bảo dữ liệu chính xác
-    if (user) {
-      fetchMyOrders();
-    }
+    
     showToast("🎉 Đặt hàng thành công!");
   };
 
   // Admin cập nhật trạng thái đơn
   const handleUpdateOrderStatus = (orderId, newStatus) => {
-    setOrders((prev) =>
-      prev.map((o) => o.id === orderId ? { ...o, status: newStatus } : o)
-    );
+    // Đảm bảo trạng thái là chữ thường
+    const statusLowerCase = typeof newStatus === 'string' ? newStatus.toLowerCase() : newStatus;
+    
+    // Cập nhật state và lưu vào localStorage của user hiện tại
+    setOrders((prev) => {
+      const newOrders = prev.map((o) => o.id === orderId || o.orderCode === orderId ? { ...o, status: statusLowerCase } : o);
+      
+      // Lưu vào localStorage của user hiện tại
+      try {
+        const key = user ? `localOrders_${user.email}` : "localOrders";
+        localStorage.setItem(key, JSON.stringify(newOrders));
+      } catch {}
+      
+      return newOrders;
+    });
+    
+    // Cập nhật localStorage cho TẤT CẢ user (đảm bảo đồng bộ)
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith("localOrders_") || key === "localOrders") {
+          const userOrders = JSON.parse(localStorage.getItem(key) || "[]");
+          let updated = false;
+          const newOrders = userOrders.map(o => {
+            if (o.id === orderId || o.orderCode === orderId) {
+              updated = true;
+              return { ...o, status: statusLowerCase };
+            }
+            return o;
+          });
+          if (updated) {
+            localStorage.setItem(key, JSON.stringify(newOrders));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi cập nhật đơn hàng vào localStorage:", err);
+    }
   };
 
   // [MỚI] Login / Logout
@@ -317,7 +364,6 @@ const App = () => {
             navigate={navigate}
             onViewOrderDetail={handleViewOrder}
             orders={orders}
-            onRefresh={fetchMyOrders}
           />
         );
 

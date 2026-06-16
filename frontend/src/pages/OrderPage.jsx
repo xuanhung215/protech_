@@ -42,27 +42,28 @@ const formatDate = (dateStr) => {
 // (remove the local transformOrderFromBE function from OrderPage.jsx)
 // The shared transformOrderFromBE from ../utils/orderHelpers is now used instead
 
-const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => {
+const OrderPage = ({ navigate, onViewOrderDetail, user, orders }) => {
   const [filter, setFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Load đơn hàng đã sẵn sàng từ props
+  // Đơn hàng được quản lý bởi App.jsx, chỉ cần show loading ban đầu
   useEffect(() => {
     setLoading(false);
   }, []);
 
-  const handleRefresh = async () => {
-    if (!onRefresh || refreshing) return;
+  const handleRefresh = () => {
+    // Refresh không cần làm gì vì App.jsx đã quản lý state và localStorage
+    if (refreshing) return;
     setRefreshing(true);
-    try {
-      await onRefresh();
-    } finally {
-      setRefreshing(false);
-    }
+    setTimeout(() => setRefreshing(false), 500);
   };
 
-  const allOrders = orders || [];
+  // Đảm bảo orders và các trường con luôn hợp lệ
+  const allOrders = (orders || []).map(order => ({
+    ...order,
+    items: Array.isArray(order.items) ? order.items : []
+  }));
 
   // Sort theo ngày mới nhất
   const sortedOrders = [...allOrders].sort((a, b) => {
@@ -76,7 +77,7 @@ const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => 
       ? sortedOrders
       : sortedOrders.filter((o) => {
           if (filter === "pending_confirm") {
-            return o.paymentStatus?.toUpperCase() === "PENDING_CONFIRM" || o.status?.toUpperCase() === "PENDING_CONFIRM";
+            return (o.paymentStatus?.toLowerCase() === "pending_confirm") || (o.status?.toLowerCase() === "pending_confirm");
           }
           return o.status?.toLowerCase() === filter.toLowerCase();
         });
@@ -126,12 +127,6 @@ const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => 
           <p>Hãy mua sắm và theo dõi đơn hàng của bạn tại đây.</p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
             <button className="btn-primary" onClick={() => navigate("products")}>Mua sắm ngay</button>
-            {onRefresh && (
-              <button className="btn-outline" onClick={handleRefresh} disabled={refreshing}>
-                {refreshing ? <Loader2 size={16} className="spinning" /> : <RefreshCw size={16} />}
-                {refreshing ? " Đang tải..." : " Làm mới"}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -144,27 +139,25 @@ const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => 
         <h1>ĐƠN HÀNG CỦA TÔI</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 16, justifyContent: "center", marginTop: 8 }}>
           <p>{sortedOrders.length} đơn hàng</p>
-          {onRefresh && (
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              style={{
-                background: "transparent",
-                border: "1px solid rgba(255,92,0,0.4)",
-                borderRadius: 8,
-                padding: "6px 12px",
-                color: "var(--primary)",
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 13,
-              }}
-            >
-              {refreshing ? <Loader2 size={14} className="spinning" /> : <RefreshCw size={14} />}
-              {refreshing ? "Đang tải..." : "Làm mới"}
-            </button>
-          )}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            style={{
+              background: "transparent",
+              border: "1px solid rgba(255,92,0,0.4)",
+              borderRadius: 8,
+              padding: "6px 12px",
+              color: "var(--primary)",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 13,
+            }}
+          >
+            {refreshing ? <Loader2 size={14} className="spinning" /> : <RefreshCw size={14} />}
+            {refreshing ? "Đang tải..." : "Làm mới"}
+          </button>
         </div>
       </div>
 
@@ -207,13 +200,13 @@ const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => 
             }}
           >
             {filtered.map((order) => {
-              // Hiển thị trạng thái thanh toán nếu là PENDING_CONFIRM
-              const displayStatus = order.paymentStatus?.toUpperCase() === "PENDING_CONFIRM" 
-                ? "PENDING_CONFIRM" 
-                : order.status?.toUpperCase();
+              // Hiển thị trạng thái thanh toán nếu là pending_confirm
+              const displayStatus = order.paymentStatus?.toLowerCase() === "pending_confirm" 
+                ? "pending_confirm" 
+                : order.status?.toLowerCase() || "pending";
               const st =
                 STATUS_LABEL[displayStatus] ??
-                STATUS_LABEL.PENDING;
+                STATUS_LABEL.pending;
               return (
                 <div key={order.id || order.orderCode} className="order-card">
                   {/* Header đơn */}
@@ -324,7 +317,15 @@ const OrderPage = ({ navigate, onViewOrderDetail, user, orders, onRefresh }) => 
                           color: "var(--primary)",
                         }}
                       >
-                        {formatPrice(order.total)}
+                        {formatPrice(
+                            order.items.reduce((sum, item) => {
+                            // Đảm bảo lineTotal luôn là kiểu số để cộng không bị lỗi chuỗi
+                            const price = typeof item.lineTotal === "number" 
+                              ? item.lineTotal 
+                              : parseFloat(item.lineTotal || 0);
+                            return sum + price;
+                          }, 0)
+                        )}
                       </span>
                     </div>
                     <div style={{ display: "flex", gap: 10 }}>
