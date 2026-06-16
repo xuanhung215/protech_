@@ -12,7 +12,6 @@ Dự án có cấu trúc như sau:
 ProFit/
 ├── backend-node/    # Backend - Node.js / Express / TypeORM / MySQL
 ├── frontend/       # Giao diện web - React / Vite
-├── chatbot/        # Dịch vụ chatbot riêng
 └── README.md       # File hướng dẫn này
 ```
 
