@@ -13,7 +13,6 @@ import * as reviewRoutes from "./routes/review";
 import * as messageRoutes from "./routes/message";
 import * as adminRoutes from "./routes/admin";
 import * as dashboardRoutes from "./routes/dashboard";
-import * as paymentRoutes from "./routes/payment";
 
 const app = express();
 
@@ -90,13 +89,6 @@ app.get("/api/messages/admin/unread-count", authenticate, requireAdmin, messageR
 // ============================================
 app.post("/api/v1/banking/confirm/:orderId", authenticate, orderRoutes.confirmBankingPayment);
 app.get("/api/v1/banking/pending-count", authenticate, orderRoutes.getPendingConfirmCount);
-
-// ============================================
-// VNPay
-// ============================================
-app.get("/api/v1/payment/create/:orderId", paymentRoutes.createPaymentUrl);
-app.get("/api/v1/payment/vnpay-return", paymentRoutes.vnpayReturn);
-app.post("/api/v1/payment/vnpay-ipn", paymentRoutes.vnpayIpn);
 
 // ============================================
 // Admin routes (API endpoints)

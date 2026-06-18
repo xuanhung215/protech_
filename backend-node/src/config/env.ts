@@ -19,19 +19,11 @@ export const config = {
     },
     customer: {
       enabled: process.env.BOOTSTRAP_CUSTOMER_ENABLED !== "false",
-      fullName: process.env.BOOTSTRAP_CUSTOMER_FULL_NAME || "Khach Hang Test",
+      fullName: process.env.BOOTSTRAP_CUSTOMER_FULL_NAME || "Khach Hang",
       email: process.env.BOOTSTRAP_CUSTOMER_EMAIL || "khachhang@gmail.com",
       phone: process.env.BOOTSTRAP_CUSTOMER_PHONE || "0987654321",
       password: process.env.BOOTSTRAP_CUSTOMER_PASSWORD || "Customer@123",
     },
-  },
-
-  vnpay: {
-    tmnCode: process.env.VNPAY_TMN_CODE || "",
-    hashSecret: process.env.VNPAY_HASH_SECRET || "",
-    paymentUrl: process.env.VNPAY_PAYMENT_URL || "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
-    returnUrl: process.env.VNPAY_RETURN_URL || "http://localhost:3001/api/v1/payment/vnpay-return",
-    ipnUrl: process.env.VNPAY_IPN_URL || "http://localhost:3001/api/v1/payment/vnpay-ipn",
   },
 
   frontendBaseUrl: process.env.FRONTEND_BASE_URL || "http://localhost:5173",
