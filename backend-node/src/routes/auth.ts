@@ -148,7 +148,9 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
   user.resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
   await userRepo.save(user);
 
-  const resetLink = `${config.frontendBaseUrl}/reset-password?token=${user.resetToken}`;
+  // Lấy origin từ request để biết frontend đang chạy ở đâu (Vercel hay localhost)
+  const clientOrigin = req.headers.origin || config.frontendBaseUrl;
+  const resetLink = `${clientOrigin}/reset-password?token=${user.resetToken}`;
   console.log(`[Auth] Reset link for ${email}: ${resetLink}`);
 
   res.json({ message: "Neu email ton tai trong he thong, ban se nhan duoc lien ket dat lai mat khau.", demo: true, resetLink });

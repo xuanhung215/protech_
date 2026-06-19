@@ -7,7 +7,7 @@ import { apiLogin } from "../utils/api";
 import ForgotPasswordModal from "../components/ForgotPasswordModal";
 
 const LoginPage = ({ onLogin, navigate }) => {
-  const [form, setForm] = useState({ email: "admin@profit.com", password: "Admin@123" });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);

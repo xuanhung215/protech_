@@ -11,7 +11,7 @@ const ALL_CATEGORY = { id: 0, name: "Tất cả", count: 0, icon: "" };
 
 const PRICE_RANGES = [
   { id: "all", label: "Tất cả", min: 0, max: Infinity },
-  { id: "100k-300k", label: "100k – 300k", min: 100000, max: 300000 },
+  { id: "300k", label: "Dưới 300k", min: 0, max: 300000 },
   { id: "300k-500k", label: "300k – 500k", min: 300000, max: 500000 },
   { id: "500k-1m", label: "500k – 1 triệu", min: 500000, max: 1000000 },
   { id: "1m-1.5m", label: "1 – 1.5 triệu", min: 1000000, max: 1500000 },
