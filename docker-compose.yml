@@ -1,0 +1,52 @@
+services:
+  backend:
+    build:
+      context: ./backend-node
+      dockerfile: Dockerfile
+    image: profit-backend:latest
+    container_name: profit-backend
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+    ports:
+      - "${BACKEND_PORT:-3001}:3001"
+    volumes:
+      - backend-uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/v1/products"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - profit-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # Khi chạy qua nginx reverse proxy, frontend gọi /api/v1 (relative)
+        # Nếu muốn frontend gọi trực tiếp backend, đổi thành http://localhost:3001/api/v1
+        VITE_API_BASE_URL: /api/v1
+    image: profit-frontend:latest
+    container_name: profit-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    networks:
+      - profit-net
+
+networks:
+  profit-net:
+    driver: bridge
+
+volumes:
+  backend-uploads:
+    driver: local
